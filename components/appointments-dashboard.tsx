@@ -13,10 +13,11 @@
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import type { Appointment, PatientType } from "@/lib/types";
-import { TODAY } from "@/lib/mock-appointments";
+import { TODAY, getAppointments } from "@/lib/mock-appointments";
 import { addDays, dayLabel, fmtDate, fmtSlash, fmtTime } from "@/lib/format";
 
 const ACCENT = "#4FC9D6";
+const POLL_INTERVAL_MS = 5000;
 const FONT = "'DM Sans',sans-serif";
 const MONO = "'JetBrains Mono',monospace";
 
@@ -110,6 +111,63 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Poll Supabase for rows the n8n backend has inserted since the page loaded.
+  // We only ever ADD rows the dashboard doesn't already know about — existing
+  // appointments (including "apt-new-*" walk-ins entered locally, and rows
+  // whose status/cancelled state lives only in client state) are left alone,
+  // so a poll can never clobber something the front desk is mid-edit on.
+  useEffect(() => {
+    let unmounted = false;
+    let inFlight = false;
+
+    async function poll() {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const fresh = await getAppointments();
+        if (unmounted) return;
+
+        let arrivals: Appointment[] = [];
+        setAppts((prev) => {
+          const knownIds = new Set(prev.map((a) => a.id));
+          arrivals = fresh.filter((a) => !knownIds.has(a.id));
+          return arrivals.length ? [...arrivals, ...prev] : prev;
+        });
+
+        if (arrivals.length) {
+          setEntering((p) => {
+            const next = { ...p };
+            arrivals.forEach((a) => (next[a.id] = true));
+            return next;
+          });
+          setTimeout(() => {
+            setEntering((p) => {
+              const next = { ...p };
+              arrivals.forEach((a) => delete next[a.id]);
+              return next;
+            });
+          }, 1000);
+
+          showToast(
+            arrivals.length === 1
+              ? `${arrivals[0].patient_name} — new booking received`
+              : `${arrivals.length} new appointments received`,
+          );
+        }
+      } catch (err) {
+        console.error("Appointment poll failed:", err);
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    const id = setInterval(poll, POLL_INTERVAL_MS);
+    return () => {
+      unmounted = true;
+      clearInterval(id);
+    };
   }, []);
 
   const newApptCounterRef = useRef(0);
