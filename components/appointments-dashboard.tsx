@@ -21,8 +21,8 @@ const POLL_INTERVAL_MS = 5000;
 const FONT = "'DM Sans',sans-serif";
 const MONO = "'JetBrains Mono',monospace";
 
-type FieldKey = "name" | "type" | "reason" | "date" | "time" | "phone" | "fee";
-const KEYS: FieldKey[] = ["name", "type", "reason", "date", "time", "phone", "fee"];
+type FieldKey = "name" | "type" | "reason" | "date" | "time" | "phone";
+const KEYS: FieldKey[] = ["name", "type", "reason", "date", "time", "phone"];
 const FIELD_PROP: Record<FieldKey, keyof Appointment> = {
   name: "patient_name",
   type: "patient_type",
@@ -30,7 +30,6 @@ const FIELD_PROP: Record<FieldKey, keyof Appointment> = {
   date: "appointment_date",
   time: "assigned_time",
   phone: "phone_number",
-  fee: "fee",
 };
 const FIELD_LABEL: Record<FieldKey, string> = {
   name: "Name",
@@ -39,7 +38,6 @@ const FIELD_LABEL: Record<FieldKey, string> = {
   date: "Date",
   time: "Time",
   phone: "Phone",
-  fee: "Fee",
 };
 
 const TYPE_LABEL: Record<PatientType, string> = {
@@ -330,13 +328,7 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
       dateF,
       timeF,
       mk("phone", { mono: true }),
-      mk("fee", {
-        mono: true,
-        readOnly: true,
-        value: `₹${a.fee}`,
-        caption: a.fee === 0 ? "No consult fee" : "Payable at desk",
-        onCopy: () => doCopy(a.id, "fee", String(a.fee)),
-      }),
+      
     ];
   }
 
@@ -563,7 +555,6 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
               <NewApptField label="Appointment date" value={form.appointment_date} onChange={(v) => setFormField("appointment_date", v)} type="date" mono />
               <NewApptField label="Preferred time" value={form.assigned_time} onChange={(v) => setFormField("assigned_time", v)} type="time" mono />
               <NewApptField label="Phone number" value={form.phone_number} onChange={(v) => setFormField("phone_number", v)} placeholder="10 digits" mono />
-              <NewApptSelect label="Fee ₹ (set at booking, not computed)" value={form.fee} onChange={(v) => setFormField("fee", v)} options={["500", "0"]} />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18 }}>
               <span style={{ flex: 1 }} />
