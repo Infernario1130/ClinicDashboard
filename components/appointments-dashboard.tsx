@@ -13,7 +13,7 @@
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import type { Appointment, PatientType } from "@/lib/types";
-import { TODAY, getAppointments } from "@/lib/mock-appointments";
+import { TODAY, getAppointments, updateAppointmentStatus } from "@/lib/mock-appointments";
 import { addDays, dayLabel, fmtDate, fmtSlash, fmtTime } from "@/lib/format";
 
 const ACCENT = "#4FC9D6";
@@ -216,6 +216,7 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
   }
 
   function markDone(a: Appointment, auto: boolean) {
+    updateAppointmentStatus(a.id, "Done");
     animateMove(
       a.id,
       { status: "Done" },
@@ -225,6 +226,7 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
   }
 
   function reopen(a: Appointment, silent?: boolean) {
+    updateAppointmentStatus(a.id, "Needs entry");
     clearCopied(a.id);
     animateMove(a.id, { status: "Needs entry" }, silent ? `${a.patient_name} reopened — copy marks cleared` : `${a.patient_name} reopened into Needs entry`);
   }
@@ -263,16 +265,7 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
   }
 
   function cancelRow(a: Appointment) {
-    const isCancelled = !!cancelled[a.id];
-    if (isCancelled) {
-      setCancelled((prev) => ({ ...prev, [a.id]: false }));
-      showToast(`${a.patient_name} restored`);
-      return;
-    }
-    setCancelled((prev) => ({ ...prev, [a.id]: true }));
-    upd(a.id, { status: "Needs entry" });
-    clearCopied(a.id);
-    showToast(`${a.patient_name} cancelled — remove from Docbox`, () => setCancelled((prev) => ({ ...prev, [a.id]: false })));
+    reopen(a);
   }
 
   function fieldsFor(a: Appointment): FieldVM[] {

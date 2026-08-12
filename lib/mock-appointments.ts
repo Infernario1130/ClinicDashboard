@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Appointment } from "./types";
+import type { Appointment, AppointmentStatus } from "./types";
 
 export const HOSPITAL_NAME = "Sangam Super Speciality Eye Hospital";
 export const HOSPITAL_LOCATION = "Taramandal, Gorakhpur, Uttar Pradesh";
@@ -30,6 +30,11 @@ export async function getAppointments(): Promise<Appointment[]> {
     assigned_time: row.assigned_time ?? "",
     phone_number: row.phone_number ?? "",
     fee: row.fee ?? 0,
-    status: "Needs entry",
+    status: row.docbox_status === "Done" ? "Done" : "Needs entry",
   }));
+}
+
+export async function updateAppointmentStatus(id: string, status: AppointmentStatus) {
+  const { error } = await supabase.from("appointments").update({ docbox_status: status }).eq("id", id);
+  if (error) console.error("Failed to update status:", error.message);
 }

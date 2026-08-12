@@ -32,3 +32,4 @@ export interface CallbackLead {
   notes: string;
   called_back: boolean;
 }
+
