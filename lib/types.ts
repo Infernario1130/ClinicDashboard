@@ -1,6 +1,3 @@
-// Shape mirrors the Supabase `appointments` table exactly (snake_case, same
-// column types) so swapping the mock data source for a real Supabase query
-// later requires no changes to any component.
 export type PatientType = "visited_recently" | "not_recent";
 export type AppointmentStatus = "Needs entry" | "Done";
 export type ChangeState =
@@ -20,7 +17,6 @@ export interface Appointment {
   phone_number: string;
   fee: number;
   status: AppointmentStatus;
-  payment_status: string; // "Pending" | "Confirmed"
 }
 export interface CallbackLead {
   id: string;
