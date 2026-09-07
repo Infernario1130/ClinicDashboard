@@ -21,6 +21,7 @@ export interface Appointment {
   phone_number: string;
   fee: number;
   status: AppointmentStatus;
+  payment_status: string; // "Pending" | "Confirmed"
 }
 
 export interface CallbackLead {
