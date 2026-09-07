@@ -10,7 +10,6 @@ export type ChangeState =
   | "Confirmed"
   | "No answer";
 export type ReminderStage = "morning" | "imminent" | null;
-
 export interface Appointment {
   id: string;
   patient_name: string;
@@ -23,7 +22,6 @@ export interface Appointment {
   status: AppointmentStatus;
   payment_status: string; // "Pending" | "Confirmed"
 }
-
 export interface CallbackLead {
   id: string;
   name: string;
@@ -33,4 +31,3 @@ export interface CallbackLead {
   notes: string;
   called_back: boolean;
 }
-
