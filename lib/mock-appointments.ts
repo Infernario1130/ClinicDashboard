@@ -21,7 +21,24 @@ export async function getAppointments(): Promise<Appointment[]> {
     return [];
   }
 
-  return (data ?? []).map((row): Appointment => ({
+  // De-dupe: the n8n booking flow occasionally inserts the same appointment
+  // twice in quick succession (identical patient, phone, date, and time —
+  // e.g. rows 299/300 for "Aman"). Rather than showing both as separate
+  // cards, keep only the earliest (lowest id) row per unique
+  // patient+phone+date+time combo. This runs on every poll too, so a
+  // duplicate insert never surfaces as a second card even briefly.
+  const rows = data ?? [];
+  const byKey = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    const key = `${row.patient_name ?? ""}|${row.phone_number ?? ""}|${row.appointment_date ?? ""}|${row.assigned_time ?? ""}`;
+    const existing = byKey.get(key);
+    if (!existing || Number(row.id) < Number(existing.id)) {
+      byKey.set(key, row);
+    }
+  }
+  const deduped = Array.from(byKey.values()).sort((a, b) => Number(b.id) - Number(a.id));
+
+  return deduped.map((row): Appointment => ({
     id: String(row.id),
     patient_name: row.patient_name ?? "",
     patient_type: row.patient_type === "visited_recently" ? "visited_recently" : "not_recent",
@@ -31,6 +48,7 @@ export async function getAppointments(): Promise<Appointment[]> {
     phone_number: row.phone_number ?? "",
     fee: row.fee ?? 0,
     status: row.docbox_status === "Done" ? "Done" : "Needs entry",
+    payment_status: row["Payment Status"] ?? "",
   }));
 }
 
