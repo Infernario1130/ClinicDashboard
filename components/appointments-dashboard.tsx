@@ -419,6 +419,7 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
       phone_number: form.phone_number,
       fee: parseInt(form.fee, 10),
       status: "Needs entry",
+      payment_status: "",
     };
     setAppts((prev) => [rec, ...prev]);
     setFormOpen(false);
@@ -716,8 +717,10 @@ function AppointmentRow({
   onCancel: () => void;
 }) {
   const done = a.status === "Done";
+  const paid = a.payment_status === "Confirmed";
   let edge = "rgba(255,255,255,.07)";
   if (cancelled) edge = "#CE1E2D";
+  else if (paid) edge = "#F0A81E";
   else if (done) edge = "rgba(79,201,214,.4)";
 
   const anim = exiting ? "omOut .36s ease forwards" : entering ? "omIn .34s ease both, omGlow 1s ease .1s both" : "none";
@@ -725,8 +728,8 @@ function AppointmentRow({
     position: "relative",
     padding: "11px 14px 12px",
     borderRadius: 10,
-    background: done ? "rgba(255,255,255,.028)" : "rgba(255,255,255,.05)",
-    border: `1px solid ${cancelled ? "rgba(206,30,45,.3)" : "rgba(255,255,255,.07)"}`,
+    background: cancelled ? (done ? "rgba(255,255,255,.028)" : "rgba(255,255,255,.05)") : paid ? "rgba(240,168,30,.10)" : done ? "rgba(255,255,255,.028)" : "rgba(255,255,255,.05)",
+    border: `1px solid ${cancelled ? "rgba(206,30,45,.3)" : paid ? "rgba(240,168,30,.4)" : "rgba(255,255,255,.07)"}`,
     borderLeft: `3px solid ${edge}`,
     opacity: cancelled ? 0.72 : 1,
     animation: anim,
