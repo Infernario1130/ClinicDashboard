@@ -17,6 +17,7 @@ export interface Appointment {
   phone_number: string;
   fee: number;
   status: AppointmentStatus;
+  payment_status: string; // raw value from Supabase's "Payment Status" column, e.g. "Pending" | "Confirmed"
 }
 export interface CallbackLead {
   id: string;
