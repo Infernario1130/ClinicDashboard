@@ -13,8 +13,26 @@
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import type { Appointment, PatientType } from "@/lib/types";
-import { TODAY, getAppointments, updateAppointmentStatus } from "@/lib/mock-appointments";
-import { addDays, dayLabel, fmtDate, fmtSlash, fmtTime } from "@/lib/format";
+import type { CallView } from "@/lib/calls";
+import { TODAY, addDays, dayLabel, fmtDate, fmtSlash, fmtTime } from "@/lib/format";
+import CallsView, { toCallBack } from "./calls-view";
+
+// The browser never talks to Supabase directly: everything goes through the
+// session-checked API routes (D-360). A 401 means the session ran out.
+async function getAppointments(): Promise<Appointment[]> {
+  const res = await fetch("/api/appointments");
+  if (res.status === 401) window.location.reload();
+  if (!res.ok) throw new Error(`Appointment poll failed: ${res.status}`);
+  return res.json();
+}
+
+function updateAppointmentStatus(id: string, status: Appointment["status"]) {
+  fetch(`/api/appointments/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  }).catch((err) => console.error("Failed to update status:", err));
+}
 
 const ACCENT = "#4FC9D6";
 const POLL_INTERVAL_MS = 5000;
@@ -76,10 +94,9 @@ const inputBase: CSSProperties = {
   colorScheme: "dark",
 };
 
-export default function AppointmentsDashboard({ initialAppointments }: { initialAppointments: Appointment[] }) {
-  const [locked, setLocked] = useState(true);
-  const [pin, setPin] = useState("");
-  const [tab, setTab] = useState<"appts" | "sched">("appts");
+export default function AppointmentsDashboard({ initialAppointments, initialCalls }: { initialAppointments: Appointment[]; initialCalls: CallView[] }) {
+  const [tab, setTab] = useState<"appts" | "sched" | "calls">("appts");
+  const [calls, setCalls] = useState<CallView[]>(initialCalls);
   const [query, setQuery] = useState("");
   const [fRange, setFRange] = useState("All");
   const [fType, setFType] = useState("All");
@@ -380,23 +397,6 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
     return out;
   }, [tab, needs, doneList, dates, filtersActive]);
 
-  function press(k: string) {
-    if (k === "del") {
-      setPin((p) => p.slice(0, -1));
-      return;
-    }
-    if (k === "go") {
-      setLocked(false);
-      return;
-    }
-    setPin((p) => {
-      if (p.length >= 4) return p;
-      const next = p + k;
-      if (next.length === 4) setTimeout(() => setLocked(false), 340);
-      return next;
-    });
-  }
-
   function setFormField<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
   }
@@ -427,10 +427,6 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
     setTimeout(() => setEntering((prev) => ({ ...prev, [id]: false })), 1000);
     setForm({ patient_name: "", patient_type: "not_recent", reason: "", appointment_date: TODAY, assigned_time: "11:00", phone_number: "", fee: "500" });
     showToast(`${name} added to Needs entry`, () => setAppts((prev) => prev.filter((a) => a.id !== id)));
-  }
-
-  if (locked) {
-    return <LockScreen pin={pin} onPress={press} />;
   }
 
   const feedItems = feed.map((item) => {
@@ -474,6 +470,9 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
             <button onClick={() => { setTab("sched"); window.scrollTo(0, 0); }} style={tabStyle(tab === "sched")}>
               Scheduled · {appts.filter((a) => a.status === "Done").length}
             </button>
+            <button onClick={() => { setTab("calls"); window.scrollTo(0, 0); }} style={tabStyle(tab === "calls")}>
+              Calls · {toCallBack(calls)} to call back
+            </button>
           </div>
           <span style={{ flex: 1, minWidth: 12 }} />
           <div style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "right" }}>
@@ -487,6 +486,9 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
         </div>
       </div>
 
+      {tab === "calls" ? (
+        <CallsView calls={calls} setCalls={setCalls} />
+      ) : (
       <div style={{ maxWidth: 1780, margin: "0 auto", padding: "20px 22px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", paddingBottom: 14 }}>
           <div style={{ position: "relative", flex: 1, minWidth: 240, maxWidth: 400 }}>
@@ -523,6 +525,7 @@ export default function AppointmentsDashboard({ initialAppointments }: { initial
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{feedItems}</div>
       </div>
+      )}
 
       {formOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(4,14,20,.72)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "60px 20px", overflow: "auto", backdropFilter: "blur(3px)" }}>
@@ -602,60 +605,6 @@ function chipStyle(active: boolean): CSSProperties {
     font: `600 12px/1 ${FONT}`,
     whiteSpace: "nowrap",
   };
-}
-
-function LockScreen({ pin, onPress }: { pin: string; onPress: (k: string) => void }) {
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "del", "0", "go"];
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(120% 90% at 50% 0%, #10394B 0%, #071C27 62%)", fontFamily: FONT, padding: "40px 20px" }}>
-      <div style={{ width: "100%", maxWidth: 352, display: "flex", flexDirection: "column", alignItems: "center", gap: 26 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Sangam Eye Hospital" style={{ width: 76, height: 76, borderRadius: 16, display: "block" }} />
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ font: `700 19px/1.25 ${FONT}`, color: "#EAF3F6", letterSpacing: "-.01em" }}>Sangam Super Speciality Eye Hospital</div>
-          <div style={{ font: `500 12px/1.4 ${FONT}`, color: "#7FA0B0", letterSpacing: ".02em" }}>Front desk · Appointments desk access</div>
-        </div>
-        <div style={{ display: "flex", gap: 14, marginTop: 4 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <span
-              key={i}
-              style={{
-                width: 13,
-                height: 13,
-                borderRadius: "50%",
-                display: "block",
-                border: `1.5px solid ${i < pin.length ? ACCENT : "rgba(255,255,255,.22)"}`,
-                background: i < pin.length ? ACCENT : "transparent",
-                transition: "all .15s ease",
-              }}
-            />
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,86px)", gap: 12 }}>
-          {keys.map((k) => (
-            <button
-              key={k}
-              onClick={() => onPress(k)}
-              style={{
-                width: 86,
-                height: 58,
-                borderRadius: 11,
-                cursor: "pointer",
-                border: `1px solid ${k === "del" || k === "go" ? "rgba(79,201,214,.3)" : "rgba(255,255,255,.12)"}`,
-                background: "rgba(255,255,255,.035)",
-                color: k === "del" || k === "go" ? "#8FE3EC" : "#EAF3F6",
-                font: `500 20px/1 ${MONO}`,
-                transition: "all .12s ease",
-              }}
-            >
-              {k === "del" ? "⌫" : k === "go" ? "→" : k}
-            </button>
-          ))}
-        </div>
-        <div style={{ font: `500 11.5px/1.4 ${FONT}`, color: "#5C7C8C", textAlign: "center" }}>Enter any 4 digits · prototype access</div>
-      </div>
-    </div>
-  );
 }
 
 function FeedHeader({ title, count, sub, tone }: { title: string; count: number; sub: string; tone: "a" | "b" | "date" }) {
