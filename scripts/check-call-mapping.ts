@@ -27,7 +27,7 @@ assert.equal("interaction_transcript" in hook, false, "transcript must never be 
 
 const silent = fromAnalytics({ interaction_id: "a", duration_in_seconds: 31, num_messages: 1, end_reason: "USER_ENDS", agent_variables: { appointment_booked: "no" } });
 assert.equal(silent.outcome, "Missed");
-const transferred = fromAnalytics({ interaction_id: "b", duration_in_seconds: 40, num_messages: 4, end_reason: "CALL_TRANSFER", agent_variables: {} });
+const transferred = fromAnalytics({ interaction_id: "b", duration_in_seconds: 40, num_messages: 4, ended_by: "CALL_TRANSFER", agent_variables: {} });
 assert.equal(transferred.outcome, "Transferred");
 const booked = fromAnalytics({ interaction_id: "c", duration_in_seconds: 150, num_messages: 14, end_reason: "AGENT_ENDS", agent_variables: { appointment_booked: "yes" } });
 assert.equal(booked.outcome, "Booked");
