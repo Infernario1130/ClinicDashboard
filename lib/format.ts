@@ -1,3 +1,6 @@
+// Anchor date — the real current date (UTC).
+export const TODAY = new Date().toISOString().slice(0, 10);
+
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
