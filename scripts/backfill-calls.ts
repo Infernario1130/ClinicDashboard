@@ -25,8 +25,8 @@ async function fetchPage(start: string, end: string, offset: number): Promise<Sa
   const res = await fetch(`${base}?${qs}`, { headers: { "X-API-Key": env("SARVAM_API_KEY") } });
   if (!res.ok) throw new Error(`Sarvam ${res.status}: ${await res.text()}`);
   const body = await res.json();
-  // ponytail: tolerate the list sitting at the top level or under data/interactions.
-  const rows = Array.isArray(body) ? body : (body.data ?? body.interactions ?? []);
+  // Sarvam wraps the page as { items, total, limit, offset, next_page_uri }.
+  const rows = body.items;
   if (!Array.isArray(rows)) throw new Error(`Unexpected Sarvam response keys: ${Object.keys(body).join(", ")}`);
   return rows;
 }

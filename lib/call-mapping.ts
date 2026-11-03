@@ -110,6 +110,7 @@ export interface SarvamInteraction {
   attempted_at?: string | null;
   duration_in_seconds?: number | null;
   user_contact?: string | null;
+  ended_by?: string | null;
   end_reason?: string | null;
   num_messages?: number | null;
   agent_variables?: Vars;
@@ -123,7 +124,7 @@ export function fromAnalytics(r: SarvamInteraction): CallRow {
     started_at: r.start_datetime ?? r.attempted_at ?? new Date().toISOString(),
     duration_s: Number(r.duration_in_seconds ?? 0),
     caller_number: r.user_contact ?? null,
-    end_reason: r.end_reason ?? null,
+    end_reason: r.ended_by ?? r.end_reason ?? null,
     callerSpoke: Number(r.num_messages ?? 0) > 1,
     vars: r.agent_variables,
     app_version: r.app_version ?? null,
